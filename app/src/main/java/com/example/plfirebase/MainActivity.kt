@@ -9,70 +9,57 @@ import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding:ActivityMainBinding
     lateinit var auth:FirebaseAuth
+    private val personalcollectionRef = Firebase.firestore.collection("person")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        auth = Firebase.auth
-//        auth.signOut()
+        binding.btnUploadData.setOnClickListener {
+            val name =binding.etFirstName.text.toString()
+            val last = binding.etLastName.text.toString()
+            val age =binding.etAge.text.toString()
+            val person = Person(name,last,age)
+            savePerson(person)
 
-        binding.btnRegister.setOnClickListener {
-            registerUser()
         }
-        binding.btnLogin.setOnClickListener {
-            loginUser()
-        }
+        //to get our real time data whenever we update the data
+        subscribeToRealtimeUpdates()
 
     }
 
-    private fun registerUser(){
-        val email = binding.etEmailRegister.text.toString()
-        val password = binding.etPasswordRegister.text.toString()
-
-        auth.createUserWithEmailAndPassword(email,password).addOnCompleteListener{
-           if(it.isSuccessful){
-              checkLoggedInState()
-           }else{
-               Log.d("raha",it.exception.toString())
-           }
-
-        }
-    }
-
-    private fun loginUser(){
-        val email = binding.etEmailLogin.text.toString()
-        val password = binding.etPasswordLogin.text.toString()
-        auth.signInWithEmailAndPassword(email,password).addOnCompleteListener {
-            if(it.isSuccessful){
-//                val user = auth.currentUser
-                checkLoggedInState()
-            }else{
-                Toast.makeText(this,"not logged in",Toast.LENGTH_LONG).show()
-
+    private fun subscribeToRealtimeUpdates() {
+        personalcollectionRef.addSnapshotListener { querySnapshot, firebaseFirestoreException ->
+            firebaseFirestoreException?.let {
+                Toast.makeText(this, it.message, Toast.LENGTH_LONG).show()
+                return@addSnapshotListener
+            }
+            querySnapshot?.let {
+                val sb = StringBuilder()
+                for(document in it) {
+                    val person = document.toObject(Person::class.java)
+                    sb.append("$person\n")
+                }
+                binding.tvPersons.text = sb.toString()
             }
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-//        val user = auth.currentUser
-        checkLoggedInState()
-    }
-
-    private fun checkLoggedInState() {
-        if (auth.currentUser == null) { // not logged in
-            binding.tvLoggedIn.text = "You are not logged in"
-        } else {
-            binding.tvLoggedIn.text = "You are logged in!"
+    private fun savePerson(person:Person){
+        personalcollectionRef.add(person).addOnSuccessListener {
+            Log.d("ast","Success")
         }
+                .addOnFailureListener {
+                    Log.d("ast",it.toString())
+                }
     }
-
 
 }
