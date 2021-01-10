@@ -10,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.*
 
@@ -30,7 +31,26 @@ class MainActivity : AppCompatActivity() {
             savePerson(person)
 
         }
+        //to get our real time data whenever we update the data
+        subscribeToRealtimeUpdates()
 
+    }
+
+    private fun subscribeToRealtimeUpdates() {
+        personalcollectionRef.addSnapshotListener { querySnapshot, firebaseFirestoreException ->
+            firebaseFirestoreException?.let {
+                Toast.makeText(this, it.message, Toast.LENGTH_LONG).show()
+                return@addSnapshotListener
+            }
+            querySnapshot?.let {
+                val sb = StringBuilder()
+                for(document in it) {
+                    val person = document.toObject(Person::class.java)
+                    sb.append("$person\n")
+                }
+                binding.tvPersons.text = sb.toString()
+            }
+        }
     }
 
     private fun savePerson(person:Person){
